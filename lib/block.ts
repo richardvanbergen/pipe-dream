@@ -20,13 +20,40 @@ export type Block =
 export const connection = 0b1;
 export const noConnection = 0b0;
 
+const maxOffset = 20; // Maximum positive offset
+const maxRotation = 90;
+const offsetRange = maxOffset * 2; // Total range for signed offsets
+
 export function encodeBlock(
   block: Block,
   color: Color,
   isConnection = false,
+  offsetX: number = 20,
+  offsetY: number = 20,
+  rotation: number = 20,
 ) {
   const connectionBit = isConnection ? 0b1 : 0b0;
-  return (connectionBit << 8) | (color << 4) | block;
+
+  const encodedOffsetX = Math.max(
+    0,
+    Math.min(offsetRange, offsetX + maxOffset),
+  );
+
+  const encodedOffsetY = Math.max(
+    0,
+    Math.min(offsetRange, offsetY + maxOffset),
+  );
+
+  const encodedRotation = Math.max(0, Math.min(maxRotation, rotation));
+
+  return (
+    (encodedRotation << 24) |
+    (encodedOffsetY << 18) |
+    (encodedOffsetX << 12) |
+    connectionBit << 8 |
+    (color << 4) |
+    block
+  );
 }
 
 export function setBlockConnection(value: number, isConnection: boolean) {
@@ -50,6 +77,43 @@ export function decodeBlock(value: number) {
   const blockType = getBlockType(value);
   const color = getBlockColor(value);
   const isConnection = getBlockConnection(value);
+  const offsetX = getOffsetX(value);
+  const offsetY = getOffsetY(value);
+  const rotation = getRotation(value);
 
-  return { color: color as Color, blockType: blockType as Block, isConnection };
+  return {
+    color: color as Color,
+    blockType: blockType as Block,
+    isConnection,
+    offsetX,
+    offsetY,
+    rotation,
+  };
+}
+
+export function getOffsetX(value: number): number {
+  return ((value >> 12) & 0b111111) - maxOffset; // Map back to -20 to 20
+}
+
+export function getOffsetY(value: number): number {
+  return ((value >> 18) & 0b111111) - maxOffset; // Map back to -20 to 20
+}
+
+export function getRotation(value: number): number {
+  return (value >> 24) & 0b1111111;
+}
+
+export function setOffsetX(value: number, encodedValue: number): number {
+  const clampedValue = Math.max(0, Math.min(maxOffset, value));
+  return (encodedValue & ~(0b11111 << 12)) | (clampedValue << 12);
+}
+
+export function setOffsetY(value: number, encodedValue: number): number {
+  const clampedValue = Math.max(0, Math.min(maxOffset, value));
+  return (encodedValue & ~(0b11111 << 18)) | (clampedValue << 18);
+}
+
+export function setRotation(value: number, encodedValue: number): number {
+  const clampedValue = Math.max(0, Math.min(maxRotation, value));
+  return (encodedValue & ~(0b1111111 << 24)) | (clampedValue << 24);
 }

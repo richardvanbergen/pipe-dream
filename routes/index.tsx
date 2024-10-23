@@ -6,18 +6,30 @@ import Input from "../islands/Input.tsx";
 export default function Home() {
   const gridWidth = useSignal(4);
   const gridHeight = useSignal(4);
+  const chaosFactor = useSignal(0);
+  const roundness = useSignal(0);
 
   return (
     <div class="flex h-screen">
       <div
         class={`flex-1 bg-gray-100 flex justify-center items-center`}
       >
-        <CanvasSvg gridWidth={gridWidth} gridHeight={gridHeight} />
+        <CanvasSvg
+          gridWidth={gridWidth}
+          gridHeight={gridHeight}
+          chaosFactor={chaosFactor}
+          roundness={roundness}
+        />
       </div>
 
       <div class="w-64 bg-white p-4 shadow-lg flex-shrink">
         <h2 class="text-xl font-bold mb-4">Grid Settings</h2>
-        <Input gridWidth={gridWidth} gridHeight={gridHeight} />
+        <Input
+          gridWidth={gridWidth}
+          gridHeight={gridHeight}
+          chaosFactor={chaosFactor}
+          roundness={roundness}
+        />
       </div>
     </div>
   );

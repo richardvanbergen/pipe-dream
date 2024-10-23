@@ -8,7 +8,13 @@ import {
   getBlockColor,
   getBlockConnection,
   getBlockType,
+  getOffsetX,
+  getOffsetY,
+  getRotation,
   setBlockConnection,
+  setOffsetX,
+  setOffsetY,
+  setRotation,
 } from "./block.ts";
 
 Deno.test("encode block", () => {
@@ -42,4 +48,43 @@ Deno.test("get block connection", () => {
 
   assertEquals(isConnection, true);
   assertEquals(isNotConnection, false);
+});
+
+Deno.test("get offset X", () => {
+  const encodedValue = encodeBlock(block1, color1, false, 10, 5, 45);
+  const offsetX = getOffsetX(encodedValue);
+  assertEquals(offsetX, 10);
+});
+
+Deno.test("get offset Y", () => {
+  const encodedValue = encodeBlock(block1, color1, false, 10, 5, 45);
+  const offsetY = getOffsetY(encodedValue);
+  assertEquals(offsetY, 5);
+});
+
+Deno.test("get rotation", () => {
+  const encodedValue = encodeBlock(block1, color1, false, 10, 5, 45);
+  const rotation = getRotation(encodedValue);
+  assertEquals(rotation, 45);
+});
+
+Deno.test("set offset X", () => {
+  let encodedValue = encodeBlock(block1, color1, false, 10, 5, 45);
+  encodedValue = setOffsetX(15, encodedValue);
+  const offsetX = getOffsetX(encodedValue);
+  assertEquals(offsetX, 15);
+});
+
+Deno.test("set offset Y", () => {
+  let encodedValue = encodeBlock(block1, color1, false, 10, 5, 45);
+  encodedValue = setOffsetY(18, encodedValue);
+  const offsetY = getOffsetY(encodedValue);
+  assertEquals(offsetY, 18);
+});
+
+Deno.test("set rotation", () => {
+  let encodedValue = encodeBlock(block1, color1, false, 10, 5, 45);
+  encodedValue = setRotation(90, encodedValue);
+  const rotation = getRotation(encodedValue);
+  assertEquals(rotation, 90);
 });
