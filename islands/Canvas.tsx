@@ -24,15 +24,19 @@ interface CanvasProps {
   gridHeight: Signal<number>;
 }
 
+// this tricks tailwind into compiling these colors
+// bg-gray-100 bg-indigo-500 bg-pink-500 bg-green-500 bg-yellow-500 bg-purple-500
+// text-gray-100 text-indigo-500 text-pink-500 text-green-500 text-yellow-500 text-purple-500
+
 export const colorMap = {
-  [color1]: "bg-gray-100",
-  [color2]: "bg-gray-100",
-  [color3]: "bg-indigo-500",
-  [color4]: "bg-pink-500",
-  [color5]: "bg-green-500",
-  [color6]: "bg-yellow-500",
-  [color7]: "bg-purple-500",
-  [color8]: "bg-purple-500",
+  [color1]: "gray-100",
+  [color2]: "gray-100",
+  [color3]: "indigo-500",
+  [color4]: "pink-500",
+  [color5]: "green-500",
+  [color6]: "yellow-500",
+  [color7]: "purple-500",
+  [color8]: "purple-500",
 };
 
 export function CanvasSvg(props: CanvasProps) {
@@ -62,21 +66,25 @@ export function CanvasSvg(props: CanvasProps) {
         const x = col * squareSize;
         const y = row * squareSize;
 
+        const gap = 4; // Define a gap size
+        const adjustedSquareSize = squareSize - gap;
         return (
           <g key={index}>
             <rect
-              x={x}
-              y={y}
-              width={squareSize}
-              height={squareSize}
-              class={colorMap[color]}
+              x={x + gap / 2}
+              y={y + gap / 2}
+              width={adjustedSquareSize}
+              height={adjustedSquareSize}
+              rx={adjustedSquareSize / 8}
+              ry={adjustedSquareSize / 8}
+              class={`text-${colorMap[color]} fill-current`}
             />
+
             {isConnection && (
-              <rect
-                x={x + squareSize / 4}
-                y={y + squareSize / 4}
-                width={squareSize / 2}
-                height={squareSize / 2}
+              <circle
+                cx={x + adjustedSquareSize / 2 + gap / 2}
+                cy={y + adjustedSquareSize / 2 + gap / 2}
+                r={adjustedSquareSize / 8}
                 class="fill-black"
               />
             )}
@@ -87,7 +95,7 @@ export function CanvasSvg(props: CanvasProps) {
   );
 }
 
-export default function CanvasHtml(props: CanvasProps) {
+export function CanvasHtml(props: CanvasProps) {
   const { gridWidth, gridHeight } = props;
 
   const { matrix, startPosition, endPosition } = createMatrix(

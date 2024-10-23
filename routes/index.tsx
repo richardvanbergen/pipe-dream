@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
 
-import Canvas from "../islands/Canvas.tsx";
+import { CanvasSvg } from "../islands/Canvas.tsx";
 import Input from "../islands/Input.tsx";
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
       <div
         class={`flex-1 bg-gray-100 flex justify-center items-center`}
       >
-        <Canvas gridWidth={gridWidth} gridHeight={gridHeight} />
+        <CanvasSvg gridWidth={gridWidth} gridHeight={gridHeight} />
       </div>
 
       <div class="w-64 bg-white p-4 shadow-lg flex-shrink">
