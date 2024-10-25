@@ -1,4 +1,5 @@
 import { Signal } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
 
 import {
   color1,
@@ -57,9 +58,7 @@ export function CanvasSvg(props: CanvasProps) {
 
   addConnections(matrix, path);
 
-  const squareSize = 500 / Math.max(matrix.length, matrix[0].length);
-
-  console.log("themeColors", themeColors);
+  const squareSize = 700 / Math.max(matrix.length, matrix[0].length);
 
   const colorMap = {
     [color1]: themeColors[0],
@@ -147,8 +146,30 @@ export function CanvasSvg(props: CanvasProps) {
 
   const roundnessMultiplier = roundness / 10;
 
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (svgRef.current) {
+      console.log("svgRef.current", svgRef.current);
+      console.log("encodedMatrix", encodedMatrix.value);
+      const boundingBox = svgRef.current.getBBox();
+      svgRef.current.setAttribute(
+        "viewBox",
+        `${boundingBox.x} ${boundingBox.y} ${boundingBox.width} ${boundingBox.height}`,
+      );
+
+      svgRef.current.style.visibility = "visible";
+    }
+  }, [svgRef, encodedMatrix.value]);
+
   return (
-    <svg width="700" height="700" viewBox="0 0 700 700">
+    <svg
+      width="700"
+      height="700"
+      viewBox="0 0 700 700"
+      ref={svgRef}
+      style={{ visibility: "hidden" }}
+    >
       {blockOffsets.flat().map(
         (
           {
