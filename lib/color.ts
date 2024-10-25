@@ -7,7 +7,7 @@ export const color6 = 0b0101;
 export const color7 = 0b0110;
 export const color8 = 0b0111;
 
-type HSL = { h: number; s: number; l: number };
+export type HSL = { h: number; s: number; l: number };
 
 export type Color =
   | typeof color1
@@ -41,22 +41,29 @@ export function hslToString(hsl: HSL): string {
 export function generateMultipleColorsWithWarmth(
   warmth: number,
   numColors: number,
-): string[] {
-  const colors: string[] = [];
+): { h: number; s: number; l: number }[] {
+  const colors: { h: number; s: number; l: number }[] = [];
   const baseColor = generateColorWithWarmth(warmth);
   const angleStep = 120 / numColors; // Reduce the angle range to 120 degrees for closer colors
 
   for (let i = 0; i < numColors; i++) {
-    const hue = (baseColor.h + i * angleStep) % 360; // Ensure hue wraps around the color wheel
-    const saturation = baseColor.s + (i - numColors / 2) * 5; // Vary saturation slightly
-    const lightness = baseColor.l + (i - numColors / 2) * 3; // Vary lightness slightly
+    const hue = Math.round((baseColor.h + i * angleStep) % 360);
+    const saturation = Math.round(baseColor.s + (i - numColors / 2) * 5);
+    const lightness = Math.round(baseColor.l + (i - numColors / 2) * 3);
     const color = {
       h: hue,
       s: Math.max(0, Math.min(100, saturation)),
       l: Math.max(0, Math.min(100, lightness)),
     };
-    colors.push(hslToString(color));
+    colors.push(color);
   }
 
   return colors;
+}
+
+export function generateWarmthFromChaos(chaos: number) {
+  const baseWarmth = Math.pow(chaos, 1.5) * 5;
+  const randomFactor = Math.random() * 15 - 5;
+  const rawWarmth = baseWarmth + randomFactor;
+  return Math.max(0, Math.min(100, rawWarmth));
 }

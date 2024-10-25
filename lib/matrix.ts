@@ -19,6 +19,9 @@ import {
   color5,
   color6,
   color7,
+  generateMultipleColorsWithWarmth,
+  generateWarmthFromChaos,
+  type HSL,
 } from "./color.ts";
 
 export type Position = [number, number];
@@ -45,7 +48,11 @@ export function generateRandomStartAndEnd(totalEdges: number) {
   return { startOffset, endOffset };
 }
 
-export function createMatrix(width: number, height: number) {
+export function createMatrix(
+  width: number,
+  height: number,
+  chaosFactor: number,
+) {
   const gridTemplateHeight = height + 1;
   const gridTemplateWidth = width + 1;
 
@@ -56,6 +63,11 @@ export function createMatrix(width: number, height: number) {
   let edgesSeen = -1;
   let startPosition: Position = [-1, -1];
   let endPosition: Position = [-1, -1];
+
+  const themeColors = generateMultipleColorsWithWarmth(
+    generateWarmthFromChaos(chaosFactor),
+    8,
+  );
 
   const matrix = Array.from({ length: gridTemplateHeight }).map((_, xIndex) => {
     return Array.from({ length: gridTemplateWidth }).map((_, yIndex) => {
@@ -106,7 +118,7 @@ export function createMatrix(width: number, height: number) {
     });
   }) as number[][];
 
-  return { matrix, startPosition, endPosition };
+  return { matrix, startPosition, endPosition, themeColors };
 }
 
 export function shortestContiguousPath(
@@ -192,4 +204,69 @@ export function addConnections(matrix: number[][], path: Position[] | null) {
     const [x, y] = position;
     matrix[x][y] = setBlockConnection(matrix[x][y], true);
   }
+}
+
+export function encodeMatrix(
+  matrix: number[][],
+  themeColors: HSL[],
+  chaosFactor: number,
+  roundness: number,
+  startPosition: Position,
+  endPosition: Position,
+): string {
+  const height = matrix.length;
+  const width = matrix[0].length;
+
+  // Serialize the matrix size, chaos factor, roundness, start and end positions
+  const header = `${width},${height},${chaosFactor},${roundness},${
+    startPosition.join(",")
+  },${endPosition.join(",")}`;
+
+  // Serialize the matrix blocks
+  const blocks = matrix.flat().join(",");
+
+  const colors = themeColors.map((color) => `${color.h},${color.s},${color.l}`);
+
+  // Combine header and blocks
+  const combined = `${header}|${colors.join(";")}|${blocks}`;
+
+  return combined;
+}
+
+export function decodeMatrix(encoded: string): {
+  matrix: number[][];
+  themeColors: HSL[];
+  chaosFactor: number;
+  roundness: number;
+  startPosition: Position;
+  endPosition: Position;
+} {
+  const decoded = encoded;
+  const [header, themeColors, blocks] = decoded.split("|");
+  const [width, height, chaosFactor, roundness, startX, startY, endX, endY] =
+    header.split(",").map(Number);
+
+  // Reconstruct the matrix
+  const matrix = [];
+  const blockValues = blocks.split(",").map(Number);
+
+  for (let i = 0; i < height; i++) {
+    const row = blockValues.slice(i * width, (i + 1) * width);
+    matrix.push(row);
+  }
+
+  const themeColorsArray = themeColors.split(";").map((color) => {
+    const [h, s, l] = color.split(",").map(Number);
+    return { h, s, l };
+  });
+
+  // Return the matrix along with the start and end positions
+  return {
+    matrix,
+    themeColors: themeColorsArray,
+    chaosFactor,
+    roundness,
+    startPosition: [startX, startY],
+    endPosition: [endX, endY],
+  };
 }

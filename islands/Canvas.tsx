@@ -9,7 +9,7 @@ import {
   color6,
   color7,
   color8,
-  generateMultipleColorsWithWarmth,
+  hslToString,
 } from "../lib/color.ts";
 
 import {
@@ -23,23 +23,30 @@ import {
 
 import {
   addConnections,
-  createMatrix,
+  decodeMatrix,
   shortestContiguousPath,
 } from "../lib/matrix.ts";
 
 interface CanvasProps {
-  gridWidth: Signal<number>;
-  gridHeight: Signal<number>;
-  roundness: Signal<number>;
-  chaosFactor: Signal<number>;
+  encodedMatrix: Signal<string>;
 }
 
 export function CanvasSvg(props: CanvasProps) {
-  const { gridWidth, gridHeight, roundness, chaosFactor } = props;
+  const { encodedMatrix } = props;
 
-  const { matrix, startPosition, endPosition } = createMatrix(
-    gridWidth.value,
-    gridHeight.value,
+  if (!encodedMatrix.value) {
+    return null;
+  }
+
+  const {
+    matrix,
+    themeColors,
+    chaosFactor,
+    roundness,
+    startPosition,
+    endPosition,
+  } = decodeMatrix(
+    encodedMatrix.value,
   );
 
   const path = shortestContiguousPath(
@@ -52,17 +59,7 @@ export function CanvasSvg(props: CanvasProps) {
 
   const squareSize = 500 / Math.max(matrix.length, matrix[0].length);
 
-  const generateWarmthFromChaos = (chaos: number) => {
-    const baseWarmth = Math.pow(chaos, 1.5) * 5;
-    const randomFactor = Math.random() * 15 - 5;
-    const rawWarmth = baseWarmth + randomFactor;
-    return Math.max(0, Math.min(100, rawWarmth));
-  };
-
-  const themeColors = generateMultipleColorsWithWarmth(
-    generateWarmthFromChaos(chaosFactor.value),
-    8,
-  );
+  console.log("themeColors", themeColors);
 
   const colorMap = {
     [color1]: themeColors[0],
@@ -97,7 +94,7 @@ export function CanvasSvg(props: CanvasProps) {
 
   const blockOffsets = matrix.map((row, rowIndex) => {
     return row.map((value, colIndex) => {
-      const chaos = getOffsetAndRotation(value, chaosFactor.value);
+      const chaos = getOffsetAndRotation(value, chaosFactor);
 
       value = setOffsetX(chaos.offsetX, value);
       value = setOffsetY(chaos.offsetY, value);
@@ -148,17 +145,7 @@ export function CanvasSvg(props: CanvasProps) {
     };
   }).filter(Boolean) as { x1: number; y1: number }[];
 
-  const getRoundness = (baseRoundness: number) => {
-    const randomFactor = Math.random() * 2 - 1;
-    const chaosAdjustment = randomFactor * 5;
-    return Math.max(0, Math.min(10, baseRoundness + chaosAdjustment));
-  };
-
-  const adjustedRoundness = getRoundness(
-    roundness.value,
-  );
-
-  const roundnessMultiplier = adjustedRoundness / 10;
+  const roundnessMultiplier = roundness / 10;
 
   return (
     <svg width="700" height="700" viewBox="0 0 700 700">
@@ -188,7 +175,7 @@ export function CanvasSvg(props: CanvasProps) {
                   rx={width / 2 * roundnessMultiplier}
                   ry={height / 2 * roundnessMultiplier}
                   style={{
-                    fill: colorMap[color],
+                    fill: hslToString(colorMap[color]),
                     transform,
                     transformOrigin,
                   }}
