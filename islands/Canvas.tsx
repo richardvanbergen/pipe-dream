@@ -82,7 +82,7 @@ export function CanvasSvg(props: CanvasProps) {
 
     const randomOffset = (max: number) =>
       Math.floor(Math.random() * max * chaosScale);
-    const randomRotation = () => Math.floor(Math.random() * 90 * chaosScale);
+    const randomRotation = () => Math.floor(Math.random() * 180 * chaosScale);
 
     return {
       offsetX: randomOffset(20),
@@ -150,8 +150,6 @@ export function CanvasSvg(props: CanvasProps) {
 
   useEffect(() => {
     if (svgRef.current) {
-      console.log("svgRef.current", svgRef.current);
-      console.log("encodedMatrix", encodedMatrix.value);
       const boundingBox = svgRef.current.getBBox();
       svgRef.current.setAttribute(
         "viewBox",
@@ -185,6 +183,9 @@ export function CanvasSvg(props: CanvasProps) {
           },
           index,
         ) => {
+          const rx = width / 2 * ((roundness - 5) / 5);
+          const ry = height / 2 * ((roundness - 5) / 5);
+
           return (
             <g key={index}>
               {(blockType !== empty && blockType !== edge) && (
@@ -193,8 +194,8 @@ export function CanvasSvg(props: CanvasProps) {
                   y={offsetYCalculated}
                   width={width}
                   height={height}
-                  rx={width / 2 * roundnessMultiplier}
-                  ry={height / 2 * roundnessMultiplier}
+                  rx={rx}
+                  ry={ry}
                   style={{
                     fill: hslToString(colorMap[color]),
                     transform,

@@ -20,9 +20,9 @@ export type Block =
 export const connection = 0b1;
 export const noConnection = 0b0;
 
-const maxOffset = 20; // Maximum positive offset
-const maxRotation = 90;
-const offsetRange = maxOffset * 2; // Total range for signed offsets
+const maxOffset = 20;
+const maxRotation = 180;
+const offsetRange = maxOffset * 2;
 
 export function encodeBlock(
   block: Block,
@@ -30,7 +30,7 @@ export function encodeBlock(
   isConnection = false,
   offsetX: number = 20,
   offsetY: number = 20,
-  rotation: number = 20,
+  rotation: number = 0,
 ) {
   const connectionBit = isConnection ? 0b1 : 0b0;
 
@@ -117,3 +117,25 @@ export function setRotation(value: number, encodedValue: number): number {
   const clampedValue = Math.max(0, Math.min(maxRotation, value));
   return (encodedValue & ~(0b1111111 << 24)) | (clampedValue << 24);
 }
+
+// export function decodeBlock(dna: string) {
+//   if (dna.length < 15) {
+//     throw new Error("DNA string must be at least 15 characters long.");
+//   }
+
+//   const rotation = parseInt(dna.slice(0, 2)) % 90;
+//   const offsetX = parseInt(dna.slice(2, 4)) % 64;
+//   const offsetY = parseInt(dna.slice(4, 6)) % 64;
+//   const isConnection = parseInt(dna[6]) % 2 === 1;
+//   const color = parseInt(dna.slice(7, 9)) % 8;
+//   const blockType = parseInt(dna.slice(9, 11)) % 7;
+
+//   return {
+//     rotation,
+//     offsetX,
+//     offsetY,
+//     isConnection,
+//     color,
+//     blockType,
+//   };
+// }

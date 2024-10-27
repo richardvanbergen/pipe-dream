@@ -5,6 +5,23 @@ interface InputProps {
   encodedMatrix: Signal<string>;
 }
 
+async function stringToHexString(inputString: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const byteArray = encoder.encode(inputString);
+
+  const hash = await crypto.subtle.digest("SHA-512", byteArray);
+
+  const hashArray = new Uint8Array(hash);
+
+  let hexString = "";
+  for (let i = 0; i < hashArray.length; i++) {
+    const hex = hashArray[i].toString(16).padStart(2, "0");
+    hexString += hex;
+  }
+
+  return hexString;
+}
+
 export default function Input(props: InputProps) {
   const { encodedMatrix } = props;
 
@@ -12,7 +29,7 @@ export default function Input(props: InputProps) {
   const roundness = useSignal(0);
   const gridWidth = useSignal(4);
   const gridHeight = useSignal(4);
-  const fill = useSignal("fill");
+  const seed = useSignal("");
 
   function handleChaosFactorChange(e: Event) {
     if (e.target) {
@@ -42,9 +59,10 @@ export default function Input(props: InputProps) {
     }
   }
 
-  function handleFillChange(e: Event) {
+  async function handleSeedChange(e: Event) {
     if (e.target) {
-      fill.value = (e.target as HTMLInputElement).value;
+      seed.value = (e.target as HTMLInputElement).value;
+      console.log(await stringToHexString(seed.value));
       handleGenerateMatrix();
     }
   }
@@ -92,13 +110,10 @@ export default function Input(props: InputProps) {
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium text-gray-700">
-          Block Style
+          Seed
         </label>
-        <select value={fill.value} onInput={handleFillChange}>
-          <option value="stroke">Stroke</option>
-          <option value="fill">Fill</option>
-          <option value="stroke-fill">Stroke & Fill</option>
-        </select>
+
+        <input type="text" value={seed.value} onInput={handleSeedChange} />
       </div>
 
       <div>
