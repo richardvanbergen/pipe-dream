@@ -12,28 +12,40 @@ export default function Input(props: InputProps) {
   const roundness = useSignal(0);
   const gridWidth = useSignal(4);
   const gridHeight = useSignal(4);
+  const fill = useSignal("fill");
 
   function handleChaosFactorChange(e: Event) {
     if (e.target) {
       chaosFactor.value = parseInt((e.target as HTMLInputElement).value);
+      handleGenerateMatrix();
     }
   }
 
   function handleGridWidthChange(e: Event) {
     if (e.target) {
       gridWidth.value = parseInt((e.target as HTMLInputElement).value);
+      handleGenerateMatrix();
     }
   }
 
   function handleGridHeightChange(e: Event) {
     if (e.target) {
       gridHeight.value = parseInt((e.target as HTMLInputElement).value);
+      handleGenerateMatrix();
     }
   }
 
   function handleRoundnessChange(e: Event) {
     if (e.target) {
       roundness.value = parseInt((e.target as HTMLInputElement).value);
+      handleGenerateMatrix();
+    }
+  }
+
+  function handleFillChange(e: Event) {
+    if (e.target) {
+      fill.value = (e.target as HTMLInputElement).value;
+      handleGenerateMatrix();
     }
   }
 
@@ -54,10 +66,7 @@ export default function Input(props: InputProps) {
     );
   }
 
-  // NSw1LDAsMCw0LDEsMCwzfDM0NjE5MzkyMCwzNDYxOTM5MzcsMzQ2MTkzOTM3LDM0NjE5NDAxOSwzNDYxOTM5MjAsMzQ2MTkzOTM3LDM0NjE5Mzk5MCwzNDYxOTM5NzMsMzQ2MTkzOTczLDM0NjE5MzkzNywzNDYxOTM5MzcsMzQ2MTkzOTczLDM0NjE5Mzk3MywzNDYxOTM5NTYsMzQ2MTkzOTM3LDM0NjE5MzkzNywzNDYxOTM5NzMsMzQ2MTkzOTczLDM0NjE5Mzk1NiwzNDYxOTM5MzcsMzQ2MTkzOTIwLDM0NjE5NDAwMiwzNDYxOTM5MzcsMzQ2MTkzOTM3LDM0NjE5MzkyMA==
-
   function handleEncodedMatrixChange(e: Event) {
-    console.log("handleEncodedMatrixChange", e);
     if (e.target) {
       const target = e.target as HTMLInputElement;
       try {
@@ -82,7 +91,14 @@ export default function Input(props: InputProps) {
   return (
     <div class="flex flex-col gap-4">
       <div>
-        <button onClick={handleGenerateMatrix}>Generate Matrix</button>
+        <label class="block text-sm font-medium text-gray-700">
+          Block Style
+        </label>
+        <select value={fill.value} onInput={handleFillChange}>
+          <option value="stroke">Stroke</option>
+          <option value="fill">Fill</option>
+          <option value="stroke-fill">Stroke & Fill</option>
+        </select>
       </div>
 
       <div>
