@@ -19,7 +19,7 @@ export default function Home() {
       <div
         class={`flex-1 bg-gray-100 flex justify-center items-center`}
       >
-        <div class="w-1/2 max-h-full p-5">
+        <div class="max-w-1/2 max-h-full p-5">
           <CanvasSvg
             matrix={matrix}
             canvasSize={canvasSize}
