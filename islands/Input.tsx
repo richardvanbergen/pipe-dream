@@ -1,177 +1,73 @@
-import { type Signal, useSignal } from "@preact/signals";
-import { createMatrix, decodeMatrix, encodeMatrix } from "../lib/matrix.ts";
+import { type Signal } from "@preact/signals";
+import { createMatrixFromSeed } from "../lib/matrix.ts";
+import { useEffect } from "preact/hooks";
 
 interface InputProps {
-  encodedMatrix: Signal<string>;
-}
-
-async function stringToHexString(inputString: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const byteArray = encoder.encode(inputString);
-
-  const hash = await crypto.subtle.digest("SHA-512", byteArray);
-
-  const hashArray = new Uint8Array(hash);
-
-  let hexString = "";
-  for (let i = 0; i < hashArray.length; i++) {
-    const hex = hashArray[i].toString(16).padStart(2, "0");
-    hexString += hex;
-  }
-
-  return hexString;
+  matrix: Signal<Awaited<ReturnType<typeof createMatrixFromSeed>> | null>;
+  seed: Signal<string>;
+  debug: Signal<boolean>;
+  canvasSize: Signal<number>;
 }
 
 export default function Input(props: InputProps) {
-  const { encodedMatrix } = props;
+  const { matrix, seed, canvasSize, debug } = props;
 
-  const chaosFactor = useSignal(0);
-  const roundness = useSignal(0);
-  const gridWidth = useSignal(4);
-  const gridHeight = useSignal(4);
-  const seed = useSignal("");
-
-  function handleChaosFactorChange(e: Event) {
+  function handleDebugChange(e: Event) {
     if (e.target) {
-      chaosFactor.value = parseInt((e.target as HTMLInputElement).value);
-      handleGenerateMatrix();
-    }
-  }
-
-  function handleGridWidthChange(e: Event) {
-    if (e.target) {
-      gridWidth.value = parseInt((e.target as HTMLInputElement).value);
-      handleGenerateMatrix();
-    }
-  }
-
-  function handleGridHeightChange(e: Event) {
-    if (e.target) {
-      gridHeight.value = parseInt((e.target as HTMLInputElement).value);
-      handleGenerateMatrix();
-    }
-  }
-
-  function handleRoundnessChange(e: Event) {
-    if (e.target) {
-      roundness.value = parseInt((e.target as HTMLInputElement).value);
-      handleGenerateMatrix();
+      debug.value = (e.target as HTMLInputElement).checked;
     }
   }
 
   async function handleSeedChange(e: Event) {
     if (e.target) {
       seed.value = (e.target as HTMLInputElement).value;
-      console.log(await stringToHexString(seed.value));
-      handleGenerateMatrix();
+      matrix.value = await createMatrixFromSeed(
+        seed.value,
+        canvasSize.value,
+        4,
+      );
     }
   }
 
-  function handleGenerateMatrix() {
-    const { matrix, themeColors, startPosition, endPosition } = createMatrix(
-      gridWidth.value,
-      gridHeight.value,
-      chaosFactor.value,
-    );
-
-    encodedMatrix.value = encodeMatrix(
-      matrix,
-      themeColors,
-      chaosFactor.value,
-      roundness.value,
-      startPosition,
-      endPosition,
-    );
-  }
-
-  function handleEncodedMatrixChange(e: Event) {
-    if (e.target) {
-      const target = e.target as HTMLInputElement;
-      try {
-        encodedMatrix.value = target.value;
-
-        const {
-          matrix,
-          chaosFactor: decodedChaosFactor,
-          roundness: decodedRoundness,
-        } = decodeMatrix(encodedMatrix.value);
-
-        chaosFactor.value = decodedChaosFactor;
-        roundness.value = decodedRoundness;
-        gridWidth.value = matrix[0].length;
-        gridHeight.value = matrix.length;
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  }
+  useEffect(() => {
+    (async () => {
+      matrix.value = await createMatrixFromSeed(
+        seed.value,
+        canvasSize.value,
+        4,
+      );
+    })();
+  }, [seed]);
 
   return (
     <div class="flex flex-col gap-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">
+      <div class="space-y-1.5">
+        <label class="block text-sm text-gray-700 font-semibold" for="seed">
           Seed
-        </label>
-
-        <input type="text" value={seed.value} onInput={handleSeedChange} />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">
-          Matrix
         </label>
 
         <input
           type="text"
-          value={encodedMatrix.value}
-          onInput={handleEncodedMatrixChange}
+          id="seed"
+          value={seed.value}
+          onInput={handleSeedChange}
+          class="border px-3 py-2"
         />
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700">
-          Chaos Factor
+      <div class="space-y-1.5">
+        <label
+          class="block text-sm text-gray-700 font-semibold"
+          for="debug"
+        >
+          Debug
         </label>
 
         <input
-          type="range"
-          value={chaosFactor.value}
-          onInput={handleChaosFactorChange}
-          min={0}
-          max={10}
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">
-          Roundness
-        </label>
-        <input
-          type="range"
-          value={roundness.value}
-          onInput={handleRoundnessChange}
-          min={0}
-          max={10}
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Width</label>
-        <input
-          type="number"
-          value={gridWidth.value}
-          onInput={handleGridWidthChange}
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Height</label>
-        <input
-          type="number"
-          value={gridHeight.value}
-          onInput={handleGridHeightChange}
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          type="checkbox"
+          id="debug"
+          checked={debug.value}
+          onInput={handleDebugChange}
         />
       </div>
     </div>

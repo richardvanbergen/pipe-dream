@@ -63,7 +63,5 @@ export function generateMultipleColorsWithWarmth(
 
 export function generateWarmthFromChaos(chaos: number) {
   const baseWarmth = Math.pow(chaos, 1.5) * 5;
-  const randomFactor = Math.random() * 15 - 5;
-  const rawWarmth = baseWarmth + randomFactor;
-  return Math.max(0, Math.min(100, rawWarmth));
+  return Math.max(0, Math.min(100, baseWarmth));
 }

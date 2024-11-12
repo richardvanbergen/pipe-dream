@@ -1,21 +1,24 @@
 import { assertEquals } from "jsr:@std/assert";
-import { createMatrix, shortestContiguousPath } from "./matrix.ts";
+import { createMatrixFromSeed, shortestContiguousPath } from "./matrix.ts";
 import { getBlockValueFromPosition } from "./matrix.ts";
 import { end, getBlockType, start } from "./block.ts";
 
-Deno.test("create matrix", () => {
-  const setup = createMatrix(10, 10);
+Deno.test("create matrix", async () => {
+  const matrix = await createMatrixFromSeed("1234567890", 10, 4);
 
-  const { matrix, startPosition, endPosition } = setup;
+  const {
+    matrix: matrixBlocks,
+    properties: { startPosition, endPosition },
+  } = matrix;
 
-  const startBlock = getBlockValueFromPosition(matrix, startPosition);
-  const endBlock = getBlockValueFromPosition(matrix, endPosition);
+  const startBlock = getBlockValueFromPosition(matrixBlocks, startPosition);
+  const endBlock = getBlockValueFromPosition(matrixBlocks, endPosition);
 
   const startBlockType = getBlockType(startBlock);
   const endBlockType = getBlockType(endBlock);
 
-  assertEquals(matrix.length, 11);
-  assertEquals(matrix[0].length, 11);
+  assertEquals(matrixBlocks.length, 11);
+  assertEquals(matrixBlocks[0].length, 11);
 
   assertEquals(startBlockType, start);
   assertEquals(endBlockType, end);

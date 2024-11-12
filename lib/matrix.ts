@@ -1,36 +1,24 @@
 import {
-  block1,
-  block2,
-  block3,
-  edge,
-  empty,
-  encodeBlock,
-  end,
-  getBlockType,
-  setBlockConnection,
-  start,
-} from "./block.ts";
-
-import {
-  color1,
-  color2,
-  color3,
-  color4,
-  color5,
-  color6,
-  color7,
   generateMultipleColorsWithWarmth,
   generateWarmthFromChaos,
-  type HSL,
 } from "./color.ts";
+
+import { byteGenerator, seedToHash } from "./crypto.ts";
 
 export type Position = [number, number];
 
+class MatrixError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MatrixError";
+  }
+}
+
 export function getBlockValueFromPosition(
-  matrix: number[][],
+  matrix: MatrixBlock[][],
   position: Position,
 ) {
-  return matrix[position[0]][position[1]];
+  return matrix[position[1]][position[0]];
 }
 
 const generateUniqueRandom = (previousValue: number, max: number) => {
@@ -48,146 +36,370 @@ export function generateRandomStartAndEnd(totalEdges: number) {
   return { startOffset, endOffset };
 }
 
-export function createMatrix(
+/**
+ * Returns two random positions from the outer edges of a matrix, excluding corners.
+ *
+ * @param width - Width of the matrix (must be >= 3)
+ * @param height - Height of the matrix (must be >= 3)
+ * @returns Two different [x, y] positions from the edges
+ * @throws {MatrixError} If matrix dimensions are invalid or not enough positions available
+ */
+async function getRandomEdgePositions(
   width: number,
   height: number,
-  chaosFactor: number,
-) {
-  const gridTemplateHeight = height + 1;
-  const gridTemplateWidth = width + 1;
+  takeAByte: ReturnType<typeof byteGenerator>,
+): Promise<[Position, Position]> {
+  if (!Number.isInteger(width) || !Number.isInteger(height)) {
+    throw new MatrixError("Width and height must be integers");
+  }
 
-  const { startOffset, endOffset } = generateRandomStartAndEnd(
-    (width * 2) + (height * 2) - 4,
+  if (width < 3 || height < 3) {
+    throw new MatrixError(
+      "Matrix must be at least 3x3 to have non-corner edge positions",
+    );
+  }
+
+  function getValidPositions(w: number, h: number): Position[] {
+    const positions: Position[] = [];
+
+    for (let x = 1; x < w - 1; x++) {
+      positions.push([x, 0]);
+    }
+
+    for (let x = 1; x < w - 1; x++) {
+      positions.push([x, h - 1]);
+    }
+
+    for (let y = 1; y < h - 1; y++) {
+      positions.push([0, y]);
+    }
+
+    for (let y = 1; y < h - 1; y++) {
+      positions.push([w - 1, y]);
+    }
+
+    return positions;
+  }
+
+  const validPositions = getValidPositions(width, height);
+
+  if (validPositions.length < 2) {
+    throw new MatrixError(
+      "Not enough valid positions to select two different spots",
+    );
+  }
+
+  const randomIndex1 = (await takeAByte(1))[0] % validPositions.length;
+  const pos1 = validPositions[randomIndex1];
+
+  validPositions.splice(randomIndex1, 1);
+  const randomIndex2 = (await takeAByte(1))[0] % validPositions.length;
+  const pos2 = validPositions[randomIndex2];
+
+  return [pos1, pos2];
+}
+
+export async function generateMatrixBaseTraits(seed: string) {
+  const hash = await seedToHash(seed);
+  const takeAByte = byteGenerator(hash, 16);
+
+  const width = (await takeAByte(1))[0] % 5 + 3;
+  const height = (await takeAByte(1))[0] % 5 + 3;
+
+  const [startPosition, endPosition] = await getRandomEdgePositions(
+    width,
+    height,
+    takeAByte,
   );
 
-  let edgesSeen = -1;
-  let startPosition: Position = [-1, -1];
-  let endPosition: Position = [-1, -1];
+  const chaosFactor = (await takeAByte(1))[0] % 10;
+  const roundness = (await takeAByte(1))[0] % 10;
 
   const themeColors = generateMultipleColorsWithWarmth(
     generateWarmthFromChaos(chaosFactor),
     8,
   );
 
-  const matrix = Array.from({ length: gridTemplateHeight }).map((_, xIndex) => {
-    return Array.from({ length: gridTemplateWidth }).map((_, yIndex) => {
-      const isHorizontalEdge =
-        (xIndex === 0 || xIndex === gridTemplateHeight - 1) &&
-        (yIndex > 0 && yIndex < gridTemplateWidth - 1);
+  return {
+    width,
+    height,
+    startPosition,
+    endPosition,
+    chaosFactor,
+    roundness,
+    themeColors,
+  };
+}
 
-      const isVerticalEdge =
-        (yIndex === 0 || yIndex === gridTemplateWidth - 1) &&
-        (xIndex > 0 && xIndex < gridTemplateHeight - 1);
+function getBlockTypeMod(chaosFactor: number) {
+  if (chaosFactor < 1) {
+    return 1;
+  }
 
-      if (isHorizontalEdge || isVerticalEdge) {
-        edgesSeen++;
+  if (chaosFactor < 7) {
+    return 2;
+  }
 
-        if (edgesSeen === startOffset) {
-          startPosition = [xIndex, yIndex];
-          return encodeBlock(start, color6);
-        }
+  return 3;
+}
 
-        if (edgesSeen === endOffset) {
-          endPosition = [xIndex, yIndex];
-          return encodeBlock(end, color7);
-        }
+function getRotationMod(chaosFactor: number) {
+  if (chaosFactor < 1) {
+    return 1;
+  }
 
-        return encodeBlock(edge, color2);
+  if (chaosFactor < 2) {
+    return 10;
+  }
+
+  if (chaosFactor < 3) {
+    return 30;
+  }
+
+  if (chaosFactor < 5) {
+    return 60;
+  }
+
+  if (chaosFactor < 7) {
+    return 90;
+  }
+
+  if (chaosFactor < 9) {
+    return 120;
+  }
+
+  return 180;
+}
+
+export async function generateBlocksFromMatrixProperties(
+  seed: string,
+  matrixProperties: Awaited<ReturnType<typeof generateMatrixBaseTraits>>,
+) {
+  const hash = await seedToHash(seed);
+  const takeAByte = byteGenerator(hash, 16);
+
+  const blocks: BlockProperties[] = [];
+
+  for (let i = 0; i < matrixProperties.width * matrixProperties.height; i++) {
+    const blockTypeMod = getBlockTypeMod(matrixProperties.chaosFactor);
+    const blockType = (await takeAByte(1))[0] % blockTypeMod + Block1Type;
+
+    const rotationMod = getRotationMod(matrixProperties.chaosFactor);
+    const rotationNumber = (await takeAByte(1))[0] % rotationMod;
+    const rotationSign = (await takeAByte(1))[0] % 2;
+
+    const rotation = rotationSign === 0 ? rotationNumber : -rotationNumber;
+
+    const offsetX = 0;
+    const offsetY = 0;
+
+    blocks.push({ blockType, offsetX, offsetY, rotation });
+  }
+
+  const start: BlockProperties = {
+    blockType: StartBlockType,
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0,
+  };
+
+  const end: BlockProperties = {
+    blockType: EndBlockType,
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0,
+  };
+
+  return {
+    blocks,
+    start,
+    end,
+  };
+}
+
+export type MatrixBlock = {
+  position: Position;
+  blockType: number;
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
+  width: number;
+  height: number;
+  isConnection: boolean;
+};
+
+/**
+ * Creates a matrix from a seed string.
+ *
+ * @param seed - A 256-bit hex string
+ * @returns A matrix with a theme color and chaos factor derived from the seed
+ */
+export async function createMatrixFromSeed(
+  seed: string,
+  canvasSize: number,
+  gap: number,
+) {
+  const matrixProperties = await generateMatrixBaseTraits(seed);
+
+  const { blocks, start, end } = await generateBlocksFromMatrixProperties(
+    seed,
+    matrixProperties,
+  );
+
+  const squareSize = canvasSize /
+    Math.max(matrixProperties.height, matrixProperties.width);
+
+  const matrix: MatrixBlock[][] = Array.from({
+    length: matrixProperties.height,
+  }).map((_, yIndex) => {
+    return Array.from({ length: matrixProperties.width }).map((_, xIndex) => {
+      const position: Position = [xIndex, yIndex];
+      const width = squareSize - gap;
+      const height = squareSize - gap;
+      const baseOffsetX = xIndex * (squareSize + gap);
+      const baseOffsetY = yIndex * (squareSize + gap);
+
+      // overridden later by pathing code
+      const isConnection = false;
+
+      if (
+        matrixProperties.startPosition[0] === xIndex &&
+        matrixProperties.startPosition[1] === yIndex
+      ) {
+        return {
+          position,
+          ...start,
+          width,
+          height,
+          isConnection,
+          offsetX: baseOffsetX + start.offsetX,
+          offsetY: baseOffsetY + start.offsetY,
+        };
       }
 
-      const isInternal = xIndex > 0 &&
-        xIndex < gridTemplateHeight - 1 &&
+      if (
+        matrixProperties.endPosition[0] === xIndex &&
+        matrixProperties.endPosition[1] === yIndex
+      ) {
+        return {
+          position,
+          ...end,
+          width,
+          height,
+          isConnection,
+          offsetX: baseOffsetX + end.offsetX,
+          offsetY: baseOffsetY + end.offsetY,
+        };
+      }
+
+      if (
+        xIndex > 0 &&
+        xIndex < matrixProperties.width - 1 &&
         yIndex > 0 &&
-        yIndex < gridTemplateWidth - 1;
+        yIndex < matrixProperties.height - 1
+      ) {
+        const block = blocks.pop()!;
 
-      if (isInternal) {
-        const fillPiece = Math.floor(Math.random() * 3);
-
-        if (fillPiece === 0) {
-          return encodeBlock(block1, color3);
-        }
-
-        if (fillPiece === 1) {
-          return encodeBlock(block2, color4);
-        }
-
-        return encodeBlock(block3, color5);
+        return {
+          position,
+          ...block,
+          width,
+          height,
+          isConnection,
+          offsetX: baseOffsetX + block.offsetX,
+          offsetY: baseOffsetY + block.offsetY,
+        };
       }
 
-      return encodeBlock(empty, color1);
+      return {
+        position,
+        blockType: 0,
+        offsetX: baseOffsetX,
+        offsetY: baseOffsetY,
+        rotation: 0,
+        width,
+        height,
+        isConnection,
+      };
     });
-  }) as number[][];
+  });
 
-  return { matrix, startPosition, endPosition, themeColors };
+  const path = shortestContiguousPath(
+    matrix,
+    matrixProperties.startPosition,
+    matrixProperties.endPosition,
+  );
+
+  addConnections(matrix, path);
+
+  return {
+    matrix,
+    properties: matrixProperties,
+  };
 }
 
 export function shortestContiguousPath(
-  matrix: number[][],
+  matrix: MatrixBlock[][],
   startPosition: Position,
   endPosition: Position,
 ): Position[] | null {
-  const rows = matrix.length;
-  const cols = matrix[0].length;
-
-  const directions = [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ];
-
-  // BFS queue: stores [current Position, path taken, block type (null if not found)]
-  const queue: [Position, Position[], number | null][] = [[
-    startPosition,
-    [startPosition],
-    null,
-  ]];
-
   const visited = new Set<string>();
-  visited.add(`${startPosition[0]}-${startPosition[1]}`);
+  const queue: { position: Position; path: Position[] }[] = [{
+    position: startPosition,
+    path: [startPosition],
+  }];
+
+  let targetType: number | null = null;
 
   while (queue.length > 0) {
-    const [current, path, blockType] = queue.shift()!;
-    const [x, y] = current;
+    const { position: [x, y], path } = queue.shift()!;
 
-    if (x === endPosition[0] && y === endPosition[1]) {
-      return path;
-    }
+    const directions = [
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    ];
 
-    for (const [dx, dy] of directions) {
-      const newX = x + dx;
-      const newY = y + dy;
+    for (const [nextX, nextY] of directions) {
+      if (nextX === endPosition[0] && nextY === endPosition[1]) {
+        path.push(endPosition);
+        return path;
+      }
 
-      const isVisited = visited.has(`${newX}-${newY}`);
-      const isInBounds = newX >= 0 && newX < rows && newY >= 0 && newY < cols;
+      if (
+        nextX < 0 ||
+        nextX > matrix[0].length - 1 ||
+        nextY < 0 ||
+        nextY > matrix.length - 1
+      ) {
+        continue;
+      }
 
-      if (isInBounds && !isVisited) {
-        const currentBlockType = getBlockType(matrix[newX][newY]);
+      const posKey = `${nextY},${nextX}`;
+      if (visited.has(posKey)) {
+        continue;
+      }
 
-        if (currentBlockType === edge) {
-          continue;
-        }
+      visited.add(posKey);
 
-        if (currentBlockType >= block1 && currentBlockType <= block3) {
-          if (blockType === null) {
-            queue.push([
-              [newX, newY],
-              [...path, [newX, newY]],
-              currentBlockType,
-            ]);
+      // matrix addressing is [y][x]
+      // ignore empty, start, and edge blocks
+      const nextBlock = matrix[nextY][nextX];
+      if (nextBlock.blockType < 3) {
+        continue;
+      }
 
-            visited.add(`${newX}-${newY}`);
-          } else if (currentBlockType === blockType) {
-            queue.push([[newX, newY], [...path, [newX, newY]], blockType]);
-            visited.add(`${newX}-${newY}`);
-          }
-        } else if (currentBlockType === empty) {
-          queue.push([[newX, newY], [...path, [newX, newY]], blockType]);
-          visited.add(`${newX}-${newY}`);
-        } else if (blockType !== null && currentBlockType === end) {
-          queue.push([[newX, newY], [...path, [newX, newY]], blockType]);
-          visited.add(`${newX}-${newY}`);
-        }
+      // set the target block type to follow if we haven't yet
+      if (targetType === null) {
+        targetType = nextBlock.blockType;
+      }
+
+      if (nextBlock.blockType === targetType) {
+        queue.push({
+          position: [nextX, nextY],
+          path: [...path, [nextX, nextY]],
+        });
       }
     }
   }
@@ -195,78 +407,19 @@ export function shortestContiguousPath(
   return null;
 }
 
-export function addConnections(matrix: number[][], path: Position[] | null) {
+export function addConnections(
+  matrix: MatrixBlock[][],
+  path: Position[] | null,
+) {
   if (path === null) {
     return;
   }
 
   for (const position of path) {
     const [x, y] = position;
-    matrix[x][y] = setBlockConnection(matrix[x][y], true);
+    matrix[y][x] = {
+      ...matrix[y][x],
+      isConnection: true,
+    };
   }
-}
-
-export function encodeMatrix(
-  matrix: number[][],
-  themeColors: HSL[],
-  chaosFactor: number,
-  roundness: number,
-  startPosition: Position,
-  endPosition: Position,
-): string {
-  const height = matrix.length;
-  const width = matrix[0].length;
-
-  // Serialize the matrix size, chaos factor, roundness, start and end positions
-  const header = `${width},${height},${chaosFactor},${roundness},${
-    startPosition.join(",")
-  },${endPosition.join(",")}`;
-
-  // Serialize the matrix blocks
-  const blocks = matrix.flat().join(",");
-
-  const colors = themeColors.map((color) => `${color.h},${color.s},${color.l}`);
-
-  // Combine header and blocks
-  const combined = `${header}|${colors.join(";")}|${blocks}`;
-
-  return combined;
-}
-
-export function decodeMatrix(encoded: string): {
-  matrix: number[][];
-  themeColors: HSL[];
-  chaosFactor: number;
-  roundness: number;
-  startPosition: Position;
-  endPosition: Position;
-} {
-  const decoded = encoded;
-  const [header, themeColors, blocks] = decoded.split("|");
-  const [width, height, chaosFactor, roundness, startX, startY, endX, endY] =
-    header.split(",").map(Number);
-
-  // Reconstruct the matrix
-  const matrix = [];
-  const blockValues = blocks.split(",").map(Number);
-
-  for (let i = 0; i < height; i++) {
-    const row = blockValues.slice(i * width, (i + 1) * width);
-    matrix.push(row);
-  }
-
-  const themeColorsArray = themeColors.split(";").map((color) => {
-    const [h, s, l] = color.split(",").map(Number);
-    return { h, s, l };
-  });
-
-  // Return the matrix along with the start and end positions
-  return {
-    matrix,
-    themeColors: themeColorsArray,
-    chaosFactor,
-    roundness,
-    startPosition: [startX, startY],
-    endPosition: [endX, endY],
-  };
 }

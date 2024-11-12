@@ -2,19 +2,11 @@ import { assertEquals } from "jsr:@std/assert";
 import { color1, color5 } from "./color.ts";
 
 import {
+  applyChaos,
   block1,
   block2,
   encodeBlock,
-  getBlockColor,
-  getBlockConnection,
-  getBlockType,
-  getOffsetX,
-  getOffsetY,
-  getRotation,
   setBlockConnection,
-  setOffsetX,
-  setOffsetY,
-  setRotation,
 } from "./block.ts";
 
 Deno.test("encode block", () => {
@@ -87,4 +79,25 @@ Deno.test("set rotation", () => {
   encodedValue = setRotation(90, encodedValue);
   const rotation = getRotation(encodedValue);
   assertEquals(rotation, 90);
+});
+
+Deno.test("apply chaos 0", () => {
+  const chaosFactor = 0;
+  const value = 10;
+  const chaos = applyChaos(chaosFactor, value);
+  assertEquals(chaos, 0);
+});
+
+Deno.test("apply chaos 255", () => {
+  const chaosFactor = 255;
+  const value = 10;
+  const chaos = applyChaos(chaosFactor, value);
+  assertEquals(chaos, value);
+});
+
+Deno.test("apply chaos", () => {
+  const chaosFactor = 42;
+  const value = 69;
+  const chaos = applyChaos(chaosFactor, value);
+  assertEquals(chaos, 26);
 });
