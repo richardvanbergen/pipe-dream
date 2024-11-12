@@ -1,3 +1,4 @@
+import { Block1Type, EndBlockType, StartBlockType, type BlockProperties } from "./block.ts";
 import {
   generateMultipleColorsWithWarmth,
   generateWarmthFromChaos,
@@ -19,21 +20,6 @@ export function getBlockValueFromPosition(
   position: Position,
 ) {
   return matrix[position[1]][position[0]];
-}
-
-const generateUniqueRandom = (previousValue: number, max: number) => {
-  let newValue: number;
-  do {
-    newValue = Math.floor(Math.random() * max);
-  } while (newValue === previousValue);
-  return newValue;
-};
-
-export function generateRandomStartAndEnd(totalEdges: number) {
-  const startOffset = generateUniqueRandom(-1, totalEdges);
-  const endOffset = generateUniqueRandom(startOffset, totalEdges);
-
-  return { startOffset, endOffset };
 }
 
 /**

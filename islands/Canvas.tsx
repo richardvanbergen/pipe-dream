@@ -100,8 +100,7 @@ export function CanvasSvg(props: CanvasProps) {
                     style={{
                       fill: fillColor,
                       transform: `rotate(${rotation}deg)`,
-                      transformOrigin: `${offsetX + width / 2}px ${offsetY + height / 2
-                        }px`,
+                      transformOrigin: `${offsetX + width / 2}px ${offsetY + height / 2}px`,
                     }}
                   />
                 )
@@ -125,8 +124,8 @@ export function CanvasSvg(props: CanvasProps) {
                   cy={offsetY + height / 2}
                   r={width / 8}
                   style={{
-                    fill: "black",
-                    stroke: "black",
+                    fill: debug.value ? "rgba(0,0,0,0.2)" : "black",
+                    stroke: debug.value ? "rgba(0,0,0,0.2)" : "black",
                   }}
                 />
               )}

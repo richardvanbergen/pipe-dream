@@ -8,10 +8,10 @@ Deno.test("generate multiple colors", () => {
   const multipleColors = generateMultipleColorsWithWarmth(warmth, numColors);
 
   assertEquals(multipleColors, [
-    "hsl(48, 92%, 50%)",
-    "hsl(120, 92%, 50%)",
-    "hsl(192, 92%, 50%)",
-    "hsl(264, 92%, 50%)",
-    "hsl(336, 92%, 50%)",
+    { h: 48, s: 80, l: 43 },
+    { h: 72, s: 85, l: 46 },
+    { h: 96, s: 90, l: 49 },
+    { h: 120, s: 95, l: 52 },
+    { h: 144, s: 100, l: 55 }
   ]);
 });
